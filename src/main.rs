@@ -1,39 +1,18 @@
 
-use std::error::Error;
-use std::sync::Arc;
-use std::time::Instant;
-
-use image::{self, DynamicImage};
-use std::fs::{self, DirEntry, read_dir};
-use std::path::{Path, PathBuf};
-use vismatch_svc::image_hash::*;
-use itertools::Itertools;
-use std::collections::HashMap;
-
-// Some common ext for images.
-const IMAGE_EXTENSIONS: [&str; 8] = [
-    "png", "jpg", "jpeg", "gif", "bmp", "ico", "webp", "tiff" // We could consider accept only top-3 later?
-];
-
+use std::time::Instant;              // calculate time difference
+use std::error::Error;               // standard error trait
+use image::DynamicImage;             // image IO
+use itertools::Itertools;            // functional pattern support for clean code
+use std::collections::HashMap;       // hashmap support
+use std::sync::Arc;                  // shared object reference
+use std::path::{Path, PathBuf};      // filesystem path operations
+use std::fs::{read_dir, create_dir}; // filesystem utils
+use vismatch_svc::image_hash::*;     // our packaged hash algorithms
+use vismatch_svc::{
+    is_image_file,
+};
 type ProjectHashDict = HashMap<String, Vec<ImageHashEntry>>;
 
-/// Check if a given file is an image file
-fn is_image_file(file: &DirEntry) -> bool {
-    match file.path().is_file() {
-        false => false,
-        true => {
-            match file.path().extension() {
-                None => false,
-                Some(ext) => {
-                    IMAGE_EXTENSIONS.contains(
-                        &ext.to_string_lossy()
-                            .to_lowercase()
-                            .as_str())
-                },
-            }
-        },
-    }
-}
 
 /// Calculate project-wide hash from given path.
 fn calc_hash_project(project_path: &Path, hash_type: HashType) -> Result<Vec<ImageHashEntry>, Box<dyn Error>> {
@@ -52,6 +31,8 @@ fn calc_hash_project(project_path: &Path, hash_type: HashType) -> Result<Vec<Ima
     Ok(h)
 }
 
+/// For all images in project folder, try to load hash cache,
+/// and calculate if not found hash cache.
 fn load_or_calc_project_hashes(project_path: &Path, hash_type: HashType) 
     -> Result<Vec<ImageHashEntry>, Box<dyn Error>> {
 
@@ -80,8 +61,10 @@ fn load_or_calc_project_hashes(project_path: &Path, hash_type: HashType)
     Ok(hash_list)
 }
 
+/// For a given image and specified project name, calculate
+/// the difference list across project images for provided image.
 fn calc_sim_in_project(image: &DynamicImage, project_name: &str, project_hashes: Arc<ProjectHashDict>) 
-    -> Result<Vec<ImageDistEntry>, Box<dyn Error>>{
+    -> Result<Vec<ImageDistEntry>, Box<dyn Error + Send + Sync>>{
     
     // first, we should check if the project exists.
     match project_hashes.get(project_name) {
@@ -95,7 +78,8 @@ fn calc_sim_in_project(image: &DynamicImage, project_name: &str, project_hashes:
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
 
     // Stage 1: check prerequisites
 
@@ -111,7 +95,7 @@ fn main() {
 
     match is_project_root_exists {
         false => {
-            match fs::create_dir(project_root) {
+            match create_dir(project_root) {
                 Ok(_) => println!("[*] created project root folder."),
                 Err(_) => panic!("[x] cannot create project folder, shutting down."),
             }
