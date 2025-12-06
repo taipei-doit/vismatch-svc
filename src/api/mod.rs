@@ -24,6 +24,7 @@ pub struct CompareImageResp {
 pub struct UploadImageReq {
 	project_name: String,
 	data: String,
+	with_image: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -107,6 +108,7 @@ mod tests {
         let upload_req: UploadImageReq = UploadImageReq {
             project_name: "some_project".to_owned(),
             data: smallest_png_1.clone(),
+			with_image: true,
         };
 
         let upload_req_json: String = serde_json::to_string_pretty(&upload_req).unwrap();
