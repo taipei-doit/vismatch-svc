@@ -3,7 +3,7 @@ pub mod traits;
 use std::cmp::Ordering;
 use std::error::Error;
 
-use imagehash::Hash;
+
 use serde;
 use image::{self, DynamicImage};
 use std::fs::File;
@@ -63,15 +63,45 @@ pub fn mk_hasher(hash_type: HashType) -> Box<dyn Hasher> {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
-pub struct HashProxy {
+/// We make a proxy struct for `imagehash::Hash` because it is 
+/// so bad, it cannot serialize, cannot measure distance, and
+/// even cannot clone. 
+/// 
+/// The lack of `clone` ability actually drives me nut.
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+pub struct Hash {
     /// The bit vector representation of the hash.
     pub bits: Vec<bool>,
 }
 
+impl From<imagehash::Hash> for Hash {
+    fn from(value: imagehash::Hash) -> Self {
+        Hash {
+            bits: value.bits.clone()
+        }
+    }
+}
+
+impl crate::metric::Metrizable for Hash {
+    fn dist(&self, other: &Self) -> f64 {
+        // we just borrow the already-implmented measure from Hash
+        // first make a cast
+
+        let self_hash: imagehash::Hash = imagehash::Hash {
+            bits: self.bits.clone()
+        };
+
+        let other_hash: imagehash::Hash = imagehash::Hash {
+            bits: other.bits.clone()
+        };
+
+        self_hash.dist(&other_hash)
+    }
+}
+
 fn calc_hash(image: &DynamicImage, hash_type: HashType) -> Hash {
     let hasher = mk_hasher(hash_type);
-    hasher.hash(image)
+    hasher.hash(image).into()
 }
 
 pub fn calc_image_hash(image_path: &Path, hash_type: HashType) 
@@ -97,7 +127,7 @@ pub fn write_hash_cache(image_path: &Path, image_hash: &Hash, hash_type: HashTyp
 
     // Serialize: using proxy trick.
     let hash_pxy = 
-        HashProxy { bits: image_hash.bits.clone() }; // clone to a already-derived (de)serialize struct.
+        Hash { bits: image_hash.bits.clone() }; // clone to a already-derived (de)serialize struct.
 
     let mut f_handle = File::create(hash_file_name)?;
 
@@ -128,7 +158,7 @@ pub fn fetch_hash_cache(image_path: &Path, hash_type: HashType) -> Result<ImageH
     };
 
     // try to decode
-    let hash_pxy: HashProxy = 
+    let hash_pxy: Hash = 
         bincode::serde::decode_from_std_read(
         &mut f_handle,
         bincode::config::standard(),
@@ -142,7 +172,7 @@ pub fn fetch_hash_cache(image_path: &Path, hash_type: HashType) -> Result<ImageH
     Ok(ImageHashEntry { 
         image_name: image_path.to_owned(), 
         hash_type, 
-        hash: img_hash 
+        hash: img_hash.into() 
     })
 }
 
@@ -166,7 +196,7 @@ pub fn fetch_cache_or_calc_hash(image_path: &Path, hash_type: HashType) -> Resul
 }
 
 /// The definition of (image name, hash value) pair format.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ImageHashEntry {
     pub image_name: PathBuf,
     pub hash_type: HashType,
@@ -175,7 +205,7 @@ pub struct ImageHashEntry {
 
 /// The definition of an entry of image, pair with the distance 
 /// of another given image.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ImageDistEntry {
     pub image_name: PathBuf,
     pub distance: f64,
@@ -206,7 +236,7 @@ impl Ord for ImageDistEntry {
 
 pub fn calc_distance(image: &DynamicImage, h_entry: &ImageHashEntry) -> ImageDistEntry {
     let hasher = mk_hasher(h_entry.hash_type);
-    let h = hasher.hash(&image);
+    let h: Hash = hasher.hash(&image).into();
     let h_dist = h.dist(&h_entry.hash);
 
     ImageDistEntry {
@@ -234,7 +264,7 @@ pub fn calc_similarity_list(image: &image::DynamicImage, hash_list: &Vec<ImageHa
     // It speeds up by ignore redundant hash calculation, but less
     // generality, change if needed.
     let hasher = mk_hasher(hash_list[0].hash_type);
-    let h = hasher.hash(&image);
+    let h: Hash = hasher.hash(&image).into();
     
 
 
