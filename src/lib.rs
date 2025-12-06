@@ -1,4 +1,4 @@
-pub mod descriptor;
+pub mod api;
 pub mod vec_ops;
 pub mod metric;
 pub mod image_hash;
