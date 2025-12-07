@@ -2,7 +2,7 @@ use imagehash::Hash;
 use image;
 
 pub trait Hasher {
-  fn hash(&self, image: &image::DynamicImage) -> Hash;
+    fn hash(&self, image: &image::DynamicImage) -> Hash;
 }
 
 impl Hasher for imagehash::PerceptualHash {
