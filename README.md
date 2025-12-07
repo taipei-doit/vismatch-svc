@@ -1,25 +1,40 @@
 # vismatch-svc
 
-`vismatch-svc` is a Rust-based microservice for image similarity matching. It allows you to organize images into "projects" and find similar images using perceptual hashing.
+相似影像辨識服務。
+
+`vismatch-svc` is a Rust-based microservice for image similarity matching.
+
+## TL;DR
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+[Check this guide!](https://github.com/h-alice/vismatch-api-guide)
 
 ## Features
 
--   **Image Comparison**: Compare an uploaded image against a database of images in a specific project to find the most similar matches.
--   **Image Upload**: Add new images to a project's database.
--   **Perceptual Hashing**: Uses PHash (by default) to identify similar images even if they are resized or slightly modified.
--   **Docker Ready**: Easy deployment with Docker Compose.
+- **Image comparison**: Compare an uploaded image against a database of images to find the most similar matches.
+- **Image retrieval**: Want more evidences? We provided a way to retrieve closest images to let you double check.
+- **Image upload**: Add new images to a project's database.
+- **Docker ready**: One-click™ docker compose deployment.
 
 ## Getting Started
 
 ### Prerequisites
 
--   Docker
--   Docker Compose
+- Docker needs to be installed on system.
+- Since we need to build container on-site, network connection is needed.
 
-### Installation & Running
+### Deployment
 
-1.  Clone the repository.
-2.  Start the service using Docker Compose:
+1. Clone the repository.
+2. Build container
+  ```bash
+  docker compose build
+  ```
+3. Start the service using Docker Compose:
 
     ```bash
     docker compose up -d
@@ -43,85 +58,13 @@
 
 ## API Reference
 
-### 1. Compare Images
+Again, [Check this guide](https://github.com/h-alice/vismatch-api-guide), I'm too lazy to write API documentation.
 
-Find similar images in a project.
-
--   **Endpoint**: `POST /diff`
--   **Content-Type**: `application/json`
-
-**Request Body:**
-
-```json
-{
-  "project_name": "my_project",
-  "data": "<base64_encoded_image_string>",
-  "with_image": true
-}
-```
-
--   `project_name`: Name of the project folder in `image_root`.
--   `data`: Base64 encoded string of the image to compare.
--   `with_image`: If `true`, the response will include the base64 data of the matched images.
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "success",
-  "project_name": "my_project",
-  "compare_result": [
-    {
-      "image_name": "image1.jpg",
-      "distance": 5.0,
-      "data": "<base64_encoded_image_string_or_null>"
-    },
-    {
-      "image_name": "image2.png",
-      "distance": 12.0,
-      "data": null
-    }
-  ]
-}
-```
-
--   `compare_result`: Returns the top 3 most similar images. Lower `distance` means higher similarity.
-
-### 2. Upload Image
-
-Upload a new image to a project.
-
--   **Endpoint**: `POST /upload`
--   **Content-Type**: `application/json`
-
-**Request Body:**
-
-```json
-{
-  "project_name": "my_project",
-  "image_name": "new_image.jpg",
-  "data": "<base64_encoded_image_string>"
-}
-```
-
--   `project_name`: Target project. If the folder doesn't exist, it will be created.
--   `image_name`: Filename to save the image as.
--   `data`: Base64 encoded string of the image.
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "image uploaded and indexed successfully",
-  "token": "dummy-deletion-token"
-}
-```
+Talk is cheap, so I show you the code.
 
 ## Project Structure
 
--   `src/`: Rust source code.
--   `image_root/`: Directory where images are stored (mounted volume in Docker).
--   `Dockerfile`: Multi-stage Docker build.
--   `compose.yml`: Docker Compose configuration.
+- `src/`: Rust source code.
+- `image_root/`: Directory where images are stored (mounted volume in Docker).
+- `Dockerfile`: Multi-stage Docker build.
+- `compose.yml`: Docker Compose configuration.
