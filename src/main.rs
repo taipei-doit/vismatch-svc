@@ -96,7 +96,10 @@ async fn save_image_to_project(
 
             // we need type annotation, so we created a new varibale here to hold result.
             let res: Result<ImageHashEntry, Box<dyn Error + Send + Sync>> = 
-                fetch_cache_or_calc_hash(&image_target_path, hash_type)
+                fetch_cache_or_calc_hash(
+                    &image_target_path, 
+                    hash_type,
+                    true)
                     .map_err(|f|f.to_string().into());  
             res // return the result
         });
@@ -217,7 +220,7 @@ async fn upload_handler(
     println!("[*] received upload request on <{}>", project_name); // [NOTE] verbose
 
     // do saving image, return 500 if failed
-    let _res = save_image_to_project(
+    save_image_to_project(
         &project_root,
         &project_name,
         &image,

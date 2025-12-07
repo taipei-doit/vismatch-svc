@@ -176,9 +176,27 @@ pub fn fetch_hash_cache(image_path: &Path, hash_type: HashType) -> Result<ImageH
     })
 }
 
-pub fn fetch_cache_or_calc_hash(image_path: &Path, hash_type: HashType) -> Result<ImageHashEntry, Box<dyn Error>> {
+pub fn fetch_cache_or_calc_hash(image_path: &Path, hash_type: HashType, force_rewrite_cache: bool) -> Result<ImageHashEntry, Box<dyn Error>> {
+    
     match fetch_hash_cache(image_path, hash_type) {
-        Ok(h) => Ok(h),
+        Ok(h) => { // we found exist hash cache
+            let h = match force_rewrite_cache {
+                true => { // force recalculate
+                    match calc_image_hash(image_path, hash_type) {
+                        Ok(h_new) => {
+                        // now try to write cache, and IGNORE the error.
+                        // [NOTE] shoule we catch the error of cache writing?
+                        // Hey, cache really looks like catch!
+                        write_hash_cache(image_path, &h.hash, hash_type).ok();
+                        h_new
+                    },
+                Err(_err) => h, // calculation error, just return cache
+            }
+                },
+                false => h,
+            };
+            Ok(h)
+        },
         Err(_) => {
             match calc_image_hash(image_path, hash_type) {
                 Ok(h) => {

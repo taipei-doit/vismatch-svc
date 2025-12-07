@@ -34,7 +34,10 @@ pub fn calc_hash_project(project_path: &Path, hash_type: HashType) -> Result<Vec
                 .partition_result();
 
     let (h, _): (Vec<_>, Vec<_>) = images_in_project.into_iter()
-                                    .map(|f| fetch_cache_or_calc_hash(&f, hash_type))
+                                    .map(|f| fetch_cache_or_calc_hash(
+                                            &f, 
+                                            hash_type, 
+                                            false))
                                     .partition_result();
     Ok(h)
 }
